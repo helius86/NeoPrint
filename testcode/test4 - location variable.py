@@ -7,12 +7,14 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBo
 
 from PyQt6.QtGui import QAction
 
+location_data = ''
 class TestWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.serial = None
         self.location = None  # Initialize location variable
+        self.location_lock = threading.Lock()
 
         self.init_ui()
 
@@ -115,6 +117,7 @@ class TestWindow(QWidget):
         if self.serial is not None:
             self.reader_running = False  # Set the flag to stop the reader thread
             self.serial.close()
+            self.serial = None
             self.connect_button.setText('Connect')
             self.connect_button.clicked.disconnect(self.disconnect)
             self.connect_button.clicked.connect(self.connect)
@@ -138,21 +141,35 @@ class TestWindow(QWidget):
             for line in f:
                 self.send_edit.setText(line.strip())
                 self.send()
-                # time.sleep(0.01)  # Add a small delay between sending each line
+                time.sleep(0.01)  # Add a small delay between sending each line
+
+    def extract_location_info(self, response):
+        location_start = response.find('X:')
+        if location_start != -1:
+            location_end = response.find(' ', location_start)
+            location_str = response[location_start:location_end]
+            location_dict = dict([pair.split(':') for pair in location_str.split()])
+            return location_dict
+        else:
+            return {1}
 
     def read_serial(self):
-        self.reader_running = True  # Set the flag to indicate the thread is running
+        self.reader_running = True
         while self.reader_running:
             if self.serial is not None:
                 response = ''
                 while self.serial.inWaiting() > 0:
                     response += self.serial.read(self.serial.inWaiting()).decode()
-                if response != '':
+                if 'X:0.00 Y:0.00 Z:0.00 E:0.00 Count X:0 Y:0 Z:0' in response:
+                    with self.location_lock:
+                        self.location = response
+                        print(f"Location: {self.location}")
                     self.debug_monitor.append(response)
 
-            # Sleep for a short time to avoid high CPU usage
-            time.sleep(0.01)
+                time.sleep(0.01)
 
+    def get_location(self):
+        return self.location
 class SinglePointTestWindow(TestWindow):
     def init(self, parent=None):
         super().init(parent)
@@ -211,7 +228,6 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         # Show mode selection dialog
         mode_select_dialog = ModeSelectDialog(self)
-        print('1')
         if mode_select_dialog.exec() == QDialog.DialogCode.Accepted:
             selected_mode = mode_select_dialog.get_selected_mode()
             if selected_mode == 'SinglePointTest':
@@ -227,7 +243,6 @@ class MainWindow(QMainWindow):
             # Create menu bar
             menu_bar = QMenuBar()
             self.setMenuBar(menu_bar)
-            print('2')
             # Create file menu and "Quit" action
             file_menu = menu_bar.addMenu('File')
             quit_action = QAction('Quit', self)
