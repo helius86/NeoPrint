@@ -1,16 +1,15 @@
-
+'''
+Import
+'''
 import sys
 import time
+import threading
 import serial
 import re
-import threading
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, \
-    QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QMenu
-from PyQt6.QtGui import QWindow
-
 from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, \
+    QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton, QMenu
 
 
 class SingleModeWindow(QWidget):
@@ -719,174 +718,3 @@ class AreaModeWindow(QWidget):
                     self.test_data += response
 
                 time.sleep(0.01)
-
-class ModeSelectDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
-
-    def init_ui(self):
-        # Create dialog layout
-        dialog_layout = QVBoxLayout(self)
-
-        # Create form layout for mode selection
-        form_layout = QFormLayout()
-        dialog_layout.addLayout(form_layout)
-
-        # Create radio buttons for mode selection
-        self.single_point_radio = QRadioButton('SinglePointTest', self)
-        self.multi_point_radio = QRadioButton('Multi-point test', self)
-        form_layout.addRow(self.single_point_radio)
-        form_layout.addRow(self.multi_point_radio)
-
-        # Create OK and cancel buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        dialog_layout.addWidget(button_box)
-
-    def get_selected_mode(self):
-        if self.single_point_radio.isChecked():
-            return 'SinglePointTest'
-        elif self.multi_point_radio.isChecked():
-            return 'Multi-point test'
-        else:
-            return None
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        self.serial = None
-        self.mode_select_dialog = None  # Initialize the dialog attribute to None
-
-        self.init_ui()
-
-    def init_ui(self):
-        # Show mode selection dialog
-        mode_select_dialog = ModeSelectDialog(self)
-        if mode_select_dialog.exec() == QDialog.DialogCode.Accepted:
-            selected_mode = mode_select_dialog.get_selected_mode()
-            if selected_mode == 'SinglePointTest':
-                self.test_window = SingleModeWindow(self)
-            elif selected_mode == 'Multi-point test':
-                self.test_window = AreaModeWindow(self)
-            else:
-                # No mode selected, so quit the application
-                sys.exit()
-
-            self.setCentralWidget(self.test_window)
-
-            # Create menu bar
-            menu_bar = QMenuBar()
-            self.setMenuBar(menu_bar)
-            # Create file menu and "Quit" action
-            file_menu = menu_bar.addMenu('File')
-            quit_action = QAction('Quit', self)
-            quit_action.setShortcut('Ctrl+Q')
-            quit_action.triggered.connect(self.close)
-            file_menu.addAction(quit_action)
-
-            # Create mode menu and "Select Mode" action
-            mode_menu = menu_bar.addMenu('Mode')
-            select_mode_action = QAction('Select Mode', self)
-            select_mode_action.triggered.connect(self.select_mode)
-            mode_menu.addAction(select_mode_action)
-
-            # Create "Location" menu and "Show Location" action
-            location_menu = menu_bar.addMenu('Location')
-            show_location_action = QAction('Show Location', self)
-            show_location_action.triggered.connect(self.show_location)
-            location_menu.addAction(show_location_action)
-
-            # Create "Location" menu and "Show Location" action
-            operation_menu = menu_bar.addMenu('Operation')
-            action_homing = QAction('Homing', self)
-            action_homing.triggered.connect(self.homing)
-            operation_menu.addAction(action_homing)
-
-            # Create "Location" menu and "Show Location" action
-            location_menu = menu_bar.addMenu('Data Processing')
-            data_processing = QAction('Single Point Test Result', self)
-            data_processing.triggered.connect(self.data_processing_single)
-            location_menu.addAction(data_processing)
-
-
-        else:
-            # No mode selected, so quit the application
-            sys.exit()
-
-
-        self.setWindowTitle('NeoPrint')
-        self.resize(800, 400)
-
-    def homing(self):
-        self.test_window.send_command('G28')
-
-    def data_processing_single(self):
-        z_value = re.search(r'Z:(\d+\.\d+)', self.test_window.debug_monitor.toPlainText()).group(1)
-        z_activation_distance = str(50.00 - float(z_value))
-        # SPT - Single Point Test
-        SPT_window = LocationWindow(self, z_activation_distance)
-        SPT_window.exec()
-
-    def show_location(self):
-
-        # I changed the location data to test data
-        z_value = re.search(r'Z:(\d+\.\d+)', self.test_window.debug_monitor.toPlainText()).group(1)
-
-        #print(z_value)
-        location_window = LocationWindow(self, self.test_window.debug_monitor.toPlainText())
-        location_window.exec()
-
-    def select_mode(self):
-        if self.mode_select_dialog is None:
-            self.mode_select_dialog = ModeSelectDialog(self)
-        else:
-            if self.mode_select_dialog.isVisible():  # Check if the dialog is currently visible
-                self.mode_select_dialog.reject()  # Close the dialog if it's visible
-            self.mode_select_dialog = ModeSelectDialog(self)
-        mode = self.mode_select_dialog.exec()
-        if mode == QDialog.DialogCode.Accepted:
-            selected_mode = self.mode_select_dialog.get_selected_mode()
-            if selected_mode == 'SinglePointTest':
-                self.setWindowTitle('NeoPrint - Single Point Test')
-                self.test_window = SingleModeWindow(self)
-                self.setCentralWidget(self.test_window)
-
-                # Add code for setting up SinglePointTest window
-            elif selected_mode == 'Multi-point test':
-                self.setWindowTitle('NeoPrint - Multi-point test')
-                self.test_window = AreaModeWindow(self)
-                self.setCentralWidget(self.test_window)
-                # Add code for setting up Multi-point test window
-class LocationWindow(QDialog):
-    # Changed the constructor to receive test data
-    def __init__(self, parent=None, test_data=''):
-        super().__init__(parent)
-        self.setWindowTitle('Location Data')
-        self.setGeometry(100, 100, 300, 100)
-
-        layout = QVBoxLayout(self)
-
-        label = QLabel('Location Data:')
-        layout.addWidget(label)
-
-
-        # Use test data to create the label
-        test_label = QLabel(test_data)
-        layout.addWidget(test_label)
-
-        # self.location_label = QLabel(location_data)
-        # layout.addWidget(self.location_label)
-
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-        self.setModal(True)
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
