@@ -32,7 +32,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBo
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QWindow
-
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 
 
@@ -369,6 +370,8 @@ class TestWindow(QWidget):
                             self.serial.write(data.encode())
                             response = self.serial.readline().decode()
                             self.debug_monitor.append(response)
+                            self.debug_monitor.append(f'activated force is: {activated_force}')
+
 
 
 
@@ -419,7 +422,6 @@ class TestWindow(QWidget):
 
                 time.sleep(0.01)
 
-
 class SinglePointTestWindow(TestWindow):
     def init(self, parent=None):
         super().init(parent)
@@ -464,8 +466,6 @@ class ModeSelectDialog(QDialog):
         else:
             return None
 
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -476,6 +476,12 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
+
+        # Set the window icon
+        self.setWindowIcon(QIcon('neil-icon.png'))
+
+
+
         # Show mode selection dialog
         mode_select_dialog = ModeSelectDialog(self)
         if mode_select_dialog.exec() == QDialog.DialogCode.Accepted:
@@ -541,10 +547,32 @@ class MainWindow(QMainWindow):
         self.test_window.send_command('G28')
 
     def data_processing_single(self):
-        z_value = re.search(r'Z:(\d+\.\d+)', self.test_window.debug_monitor.toPlainText()).group(1)
-        z_activation_distance = str(50.00 - float(z_value))
+        try:
+            # Extract z value from debug monitor
+            z_value = re.search(r'Z:(\d+\.\d+)', self.test_window.debug_monitor.toPlainText()).group(1)
+            z_activation_distance = 50.00 - float(z_value)
+        except AttributeError:
+            print('Error: Unable to extract Z value from debug monitor')
+            return
+
+        try:
+            # Extract activation force from debug monitor
+            activated_force = re.search(r'activated force is: (-?\d+\.\d+)', self.test_window.debug_monitor.toPlainText()).group(1)
+            #activated_force = float(activated_force), 2
+        except AttributeError:
+            print('Error: Unable to extract activated force from debug monitor')
+            activated_force = 'N/A'
+
         # SPT - Single Point Test
-        SPT_window = LocationWindow(self, z_activation_distance)
+
+        #SPT_window = SinglePointTestResultWindow(self, z_activation_distance, activated_force)
+        #SPT_window.exec()
+
+        print("Creating SPT_window")
+        SPT_window = SinglePointTestResultWindow(self)
+        print("Showing SPT_window")
+        SPT_window.set_values(z_activation_distance, activated_force)
+        print("Window opened")
         SPT_window.exec()
 
     def show_location(self):
@@ -572,6 +600,49 @@ class MainWindow(QMainWindow):
             elif selected_mode == 'Multi-point test':
                 self.setWindowTitle('NeoPrint - Multi-point test')
                 # Add code for setting up Multi-point test window
+
+
+class SinglePointTestResultWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Create layout
+        layout = QVBoxLayout(self)
+
+        # Create labels for the values and units
+        self.distance_label = QLabel()
+        self.distance_unit_label = QLabel('mm')
+        self.force_label = QLabel()
+        self.force_unit_label = QLabel('g')
+
+        # Add labels to layout
+        layout.addWidget(QLabel('Activation distance:'))
+        distance_layout = QHBoxLayout()
+        distance_layout.addWidget(self.distance_label)
+        distance_layout.addWidget(self.distance_unit_label)
+        layout.addLayout(distance_layout)
+
+        layout.addWidget(QLabel('Activation force:'))
+        force_layout = QHBoxLayout()
+        force_layout.addWidget(self.force_label)
+        force_layout.addWidget(self.force_unit_label)
+        layout.addLayout(force_layout)
+
+        self.setWindowTitle('Single Point Test')
+        self.resize(200, 100)  # set maximum width and height
+
+    def set_values(self, distance, force):
+        try:
+            # Convert distance and force to floats and round them to two decimal places
+            distance = round(float(distance), 2)
+            force = round(float(force), 2)
+
+            # Set the values of the labels
+            self.distance_label.setText(str(distance))
+            self.force_label.setText(str(force))
+        except Exception as e:
+            print(f"Error: set_value method failed: {e}")
+
 
 class LocationWindow(QDialog):
 

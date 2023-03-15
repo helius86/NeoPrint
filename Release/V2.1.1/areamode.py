@@ -1,5 +1,5 @@
 import math
-
+from mode_window_layout import AreaModeWindow
 class AreaModeFunc:
     def __init__(self, parent=None):
         super().__init__()
@@ -57,6 +57,52 @@ class AreaModeFunc:
         # Add a G28 command to home all axes after completing the probing process
         gcode_commands.append("Gxx") #为了homing，这里可以设置一个temp的坐标然后完成下一个点
         return gcode_commands
+
+
+
+
+
+
+# 最重要的method
+    def area_test_logic(self):
+        # 1. Single point test at the centre
+        # 其实就是下面几个method的一个combination，不用单独为了centre做一个method
+        centre_x_coord = "50"
+        centre_y_coord = "50"
+        point2x = "40"
+        point2y = "40"
+        self.move_to_xy(centre_x_coord, centre_y_coord)
+        # 2. When test is done Lift to a safe z - position
+        self.move_to_safe_z()
+        # 3. Move to the next point (x&y) 这里有个绝对还是相对坐标的问题，是否需要归零？
+        # 这里的point2x和point2y后面需要从list里面导出来
+        self.move_to_xy(point2x,point2y)
+        # 4. Move to the surface again
+        self.move_to_surface()
+        # 5. Begin new test
+            # 往下increment，触发之后停止步进
+
+
+
+# 底下都是工具method
+    def move_to_xy(self, x_coord, y_coord):
+        gcode = f'G1 X{x_coord} Y{y_coord}\n'
+        self.send_single_gcode(gcode)
+    def move_to_surface(self):
+        # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
+        self.send_single_gcode("G1 Z50")
+    def send_single_gcode(self, gcommand):
+        # gcommand form should be 'G91\n'
+        AreaModeWindow.serial.write(gcommand.encode())
+    def move_to_safe_z(self):
+        # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
+        self.send_single_gcode("G1 Z60")
+
+
+
+
+
+
 
 
 mode_func = AreaModeFunc()
