@@ -174,6 +174,8 @@ class MainWindow(QMainWindow):
                 self.test_window = AreaModeWindow(self)
                 self.setCentralWidget(self.test_window)
                 # Add code for setting up Multi-point test window
+
+
 class SinglePointTestResultWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -214,6 +216,7 @@ class SinglePointTestResultWindow(QDialog):
             self.force_label.setText(str(force))
         except Exception as e:
             print(f"Error: set_value method failed: {e}")
+
 class LocationWindow(QDialog):
     # Changed the constructor to receive test data
     def __init__(self, parent=None, test_data=''):

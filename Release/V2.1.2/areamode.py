@@ -1,6 +1,5 @@
 import math
-#from mode_window_layout import AreaModeWindow
-
+from mode_window_layout import AreaModeWindow
 class AreaModeFunc:
     def __init__(self, parent=None):
         super().__init__()
