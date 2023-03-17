@@ -27,7 +27,7 @@ class SingleModeWindow(QWidget):
         self.location = None  # Initialize location variable
         self.location_lock = threading.Lock()
 
-        self.start_resetting = False
+        self.button_not_pressed = False
 
         self.init_ui()
 
@@ -255,7 +255,7 @@ class SingleModeWindow(QWidget):
         self.serial.write(command.encode())
         # self.send_command('M400')
         # self.send_command("G91")
-        self.start_resetting = True
+        self.button_not_pressed = True
 
     def read_microcontroller_serial(self):
         self.microcontroller_reader_running = True
@@ -284,7 +284,7 @@ class SingleModeWindow(QWidget):
 
 
 
-                    if self.start_resetting:
+                    if self.button_not_pressed:
                         if wait_time:
                             for i in range(15):
                                 time.sleep(1)
@@ -296,27 +296,13 @@ class SingleModeWindow(QWidget):
 
                         if activated_signal == "1":
                             self.microcontroller_reader_running = False
-                            self.start_resetting = False
+                            self.button_not_pressed = False
                             print("end")
 
                             data = "M114\n"
                             self.serial.write(data.encode())
                             response = self.serial.readline().decode()
                             self.debug_monitor.append(response)
-
-
-
-                            # command = "M114\n"
-                            # self.serial.write(command.encode())
-                            # time.sleep(0.5)
-                            #
-                            # corr = ""
-                            #
-                            # while self.serial.inWaiting() > 0:
-                            #     corr += self.serial.read(self.serial.inWaiting()).decode()
-                            #     print()
-                            # if r'X:[0-9].[0-9] Y:[0-9].[0-9] Z:[0-9].[0-9] E:[0-9].[0-9] Count X:[0-9]* Y:[0-9]* Z:[0-9]*' in response:
-                            #     self.debug_monitor.append(response)
 
                             break
 
@@ -360,9 +346,14 @@ class AreaModeWindow(QWidget):
         self.ESPserial = None
         self.location = None  # Initialize location variable
         self.location_lock = threading.Lock()
-        self.start_resetting = False
+        self.button_not_pressed = True
 
         #self.gf = general_function
+        self.force_data = None
+        self.distance_data = None
+        self.activation = None
+        self.on_surface = False
+        self.current_z = None
 
         self.init_ui()
 
@@ -396,6 +387,12 @@ class AreaModeWindow(QWidget):
         self.generate_button.clicked.connect(self.generate_points)
         test_point_layout.addWidget(self.generate_button)
         printer_layout.addLayout(test_point_layout)
+
+        # Create Test button
+        self.TESTbutton = QPushButton('TESTBY')
+        self.TESTbutton.clicked.connect(self.TEST)
+        test_point_layout.addWidget(self.TESTbutton)
+
 
 
         # Create port layout
@@ -501,6 +498,7 @@ class AreaModeWindow(QWidget):
         self.setWindowTitle('NeoPrint')
         self.resize(800, 400)
 
+
     def connect_microcontroller(self):
         port = self.microcontroller_port_combo.currentText()
         baud = int(self.microcontroller_baud_combo.currentText())
@@ -528,6 +526,7 @@ class AreaModeWindow(QWidget):
         baud = int(self.baud_combo.currentText())
         try:
             self.serial = serial.Serial(port, baud)
+            print(self.serial)
             print("Printer is now online!")
             self.connect_button.setText('Disconnect')
             self.connect_button.clicked.disconnect(self.connect)
@@ -540,11 +539,15 @@ class AreaModeWindow(QWidget):
             self.reader_thread.daemon = True
             self.reader_thread.start()
 
+            self.m114_thread = threading.Thread(target=self.send_M114_thread)
+            self.m114_thread.daemon = True
+            self.m114_thread.start()
+
         except:
             self.debug_monitor.append('Failed to connect')
 
             # Add the error message to the test data string
-            self.test_data += "Failed to connect \n"
+            #self.test_data += "Failed to connect \n"
             self.test_button.setEnabled(False)  # Disable the Test button
 
     def disconnect_microcontroller(self):
@@ -601,7 +604,7 @@ class AreaModeWindow(QWidget):
         self.serial.write(command.encode())
         # self.send_command('M400')
         # self.send_command("G91")
-        self.start_resetting = True
+        self.button_not_pressed = True
 
     def read_microcontroller_serial(self):
         self.microcontroller_reader_running = True
@@ -628,35 +631,17 @@ class AreaModeWindow(QWidget):
                         f"force: {activated_force}, signal: {activated_signal}")
                     print(f"force: {activated_force}, signal: {activated_signal}")
 
-                    if self.start_resetting:
-                        if wait_time:
-                            for i in range(15):
-                                time.sleep(1)
-                            wait_time = False
+                    # store the force data & distance data
+                    self.force_data = activated_force
+                    print(self.button_not_pressed)
+                    if activated_signal == "0":
+                        self.button_not_pressed = True
+                    if activated_signal == "1":
+                        self.button_not_pressed = False
+                        print("button activated~")
+                        #self.append_single_data()
+                        print(self.button_not_pressed)
 
-                        if activated_signal == "1":
-                            self.microcontroller_reader_running = False
-                            self.start_resetting = False
-                            print("end")
-
-                            data = "M114\n"
-                            self.serial.write(data.encode())
-                            response = self.serial.readline().decode()
-                            self.debug_monitor.append(response)
-                            break
-
-                        command = "G91\n"
-                        self.serial.write(command.encode())
-                        command = "G0 Z-0.01\n"
-                        self.serial.write(command.encode())
-                        # self.send_command("G0 Z-0.01")
-                        # self.send_command("M400")
-                        print("command sent")
-
-            # self.p.send("G91")
-            # self.p.send("G0 Z-0.01")
-
-            time.sleep(0.001)
 
     def read_serial(self):
         # global location_data
@@ -667,13 +652,14 @@ class AreaModeWindow(QWidget):
                 while self.serial.inWaiting() > 0:
                     response += self.serial.read(self.serial.inWaiting()).decode()
                 if r'X:[0-9].[0-9] Y:[0-9].[0-9] Z:[0-9].[0-9] E:[0-9].[0-9] Count X:[0-9]* Y:[0-9]* Z:[0-9]*' in response:
-                    with self.location_lock:
-                        location_data = response
-                    #     print(f"Location: {self.location}")
+                    # with self.location_lock:
+                    #     location_data = response
+                    # #     print(f"Location: {self.location}")
                     self.debug_monitor.append(response)
+                    self.current_z = re.search(r'Z:(\d+\.\d+)', response).group(1)
 
                     # Add the current response to the test data string
-                    self.test_data += response
+                    #self.test_data += response
 
                 time.sleep(0.01)
 
@@ -685,14 +671,24 @@ class AreaModeWindow(QWidget):
     # New added
     def send_gcode_Test(self):
         # 先创建一个现成的list
-        testpoint_list = [[0, 0, None, None]]
+        testpoint_list = [[134, 118.5, None, None]]
                           #[-0.82, 0.75, None, None],
                           #[0.17, -1.92, None, None],
                           #[1.76, 2.3, None, None],
                           #[-2.86, -0.51, None, None]]
         # 先用一个坐标
         # 从list里生成gcode
-        下面补充这个method，然后进行测试
+        # 下面补充这个method，然后进行测试
+        for point in testpoint_list:
+            x, y = point[0], point[1]
+
+            self.move_to_safe_z()
+            self.move_to_xy(x, y)
+            self.move_to_surface()
+            self.increment_logic()
+            self.append_single_data()
+            self.move_to_safe_z()
+            #self.button_not_pressed = True
 
     def generate_points(self):
         radius_button = 3
@@ -716,6 +712,11 @@ class AreaModeWindow(QWidget):
         self.point_coords = points
         print(points)
         return points
+
+    def TEST(self):
+        #self.send_single_gcode("G28\n")
+        #self.send_gcode_Test()
+        self.send_M114()
 
     def print_points(self):
         if self.point_coords:
@@ -745,12 +746,15 @@ class AreaModeWindow(QWidget):
             # Add the G30 command to perform a single Z-probe at the current XY position
             gcode_commands.append("G30")
         # Add a G28 command to home all axes after completing the probing process
-        gcode_commands.append("G1 Z50") #为了homing，这里可以设置一个temp的坐标然后完成下一个点
+        gcode_commands.append("G0 Z50") #为了homing，这里可以设置一个temp的坐标然后完成下一个点
         return gcode_commands
 
 
 
-
+    def one_time_logic(self, x, y):
+        each_time_command = []
+        each_time_command.append(f"G1 Z{50}") # this 50 is about to change to a pre-set value
+        each_time_command.append(f"G1 X{x} Y{y}")
 
 
 # 最重要的method
@@ -775,18 +779,104 @@ class AreaModeWindow(QWidget):
 
 
 # 底下都是工具method
+    def send_single_gcode(self, gcommand):
+        try:
+            # gcommand form should be 'G91\n'
+            self.serial.write(gcommand.encode())
+        except Exception as e:
+            print(f"Error: {e}")
+
     def move_to_xy(self, x_coord, y_coord):
         gcode = f'G1 X{x_coord} Y{y_coord}\n'
         self.send_single_gcode(gcode)
 
     def move_to_surface(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
-        self.send_single_gcode("G1 Z50")
+        self.send_single_gcode("G0 Z50\n")
+        #self.send_single_gcode("M400\n")
 
-    def send_single_gcode(self, gcommand):
-        # gcommand form should be 'G91\n'
-        self.serial.write(gcommand.encode())
 
     def move_to_safe_z(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
-        self.send_single_gcode("G1 Z60")
+        self.send_single_gcode("G0 Z60\n")
+
+    def increment_logic(self):
+        try:
+            while self.button_not_pressed & self.on_surface: ###################这里逻辑好像有点问题
+                self.send_single_gcode("G91\n")
+                self.send_single_gcode("G0 Z-0.01\n")
+                #self.send_single_gcode("M400\n")
+                print("command sent")
+            print("Increment process done")
+            return  # 这里还可以做一个本地的记录器，看看和机器出来的哪个准一些
+        except Exception as e:
+            print(f"Error: {e}")
+
+
+    def append_single_data(self):
+        try:
+            self.send_single_gcode("M114\n")
+            response = self.serial.readline().decode()
+            self.debug_monitor.append(response)
+            # 这里逻辑要和serial相关，很重要，要一点点弄清楚
+        except Exception as e:
+            print(f"Error: {e}")
+
+    def send_M114(self):
+        self.send_single_gcode("M114\n")
+
+
+    def send_M114_thread(self):
+        while True:
+            self.send_M114()  # Call the function to send the command
+            print("Sent M114 in separate thread")
+            time.sleep(3)
+    def microcontroller_reading(self):
+        try:
+            print("1")
+            response = ''
+            while self.microcontroller_serial.inWaiting() > 0:
+                foo = str(self.microcontroller_serial.read(self.microcontroller_serial.inWaiting()))
+                # print(type(foo))
+                # print('')
+
+                if foo.startswith("b'"):
+                    response += foo
+            print("2")
+            if response:
+                print("3")
+                activated_force = response.split(';')[1][:-5]  # records
+                activated_signal = response.split(';')[0][2:]
+                print(response)
+                self.microcontroller_debug_monitor.append(f"force: {activated_force}, signal: {activated_signal}")
+                print(f"force: {activated_force}, signal: {activated_signal}")
+
+                # store the force data & distance data
+                self.force_data = activated_force
+                if activated_signal == "1":
+                    self.button_not_pressed = False
+                    print("button activated~")
+                    self.append_single_data()
+
+        except Exception as e:
+            print(f"Error: {e}")
+
+
+
+    def extract_distance_data(self):
+        try:
+            z_value = re.search(r'Z:(\d+\.\d+)', self.debug_monitor.toPlainText()).group(1)
+            z_activation_distance = 50.00 - float(z_value)
+
+        except AttributeError:
+            print('Error: Unable to extract Z value from debug monitor')
+            return
+
+
+
+
+
+
+
+
+

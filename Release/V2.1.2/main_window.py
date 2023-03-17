@@ -46,8 +46,8 @@ class ModeSelectDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        self.serial = None
+        #self.AreaClass = AreaModeWindow()
+        #self.serial = self.AreaClass.serial
         self.mode_select_dialog = None  # Initialize the dialog attribute to None
 
         self.init_ui()
@@ -113,7 +113,12 @@ class MainWindow(QMainWindow):
         self.resize(800, 400)
 
     def homing(self):
-        self.test_window.send_command('G28')
+        #self.test_window.send_command('G28')
+        try:
+            #self.AreaClass.send_single_gcode("G28\n")
+            print("1")
+        except Exception as e:
+            print(f"Error: {e}")
 
     def data_processing_single(self):
         try:
