@@ -355,6 +355,10 @@ class AreaModeWindow(QWidget):
         self.on_surface = False
         self.current_z = None
 
+        self.test1 = None
+        self.test2 = None
+        self.counter1 = None
+
         self.init_ui()
 
     def init_ui(self):
@@ -645,13 +649,15 @@ class AreaModeWindow(QWidget):
 
     def read_serial(self):
         # global location_data
+        #self.send_M114()
         self.reader_running = True
         while self.reader_running:
             if self.serial is not None:
                 response = ''
                 while self.serial.inWaiting() > 0:
                     response += self.serial.read(self.serial.inWaiting()).decode()
-                if r'X:[0-9].[0-9] Y:[0-9].[0-9] Z:[0-9].[0-9] E:[0-9].[0-9] Count X:[0-9]* Y:[0-9]* Z:[0-9]*' in response:
+                #if r'X:[0-9].[0-9] Y:[0-9].[0-9] Z:[0-9].[0-9] E:[0-9].[0-9] Count X:[0-9]* Y:[0-9]* Z:[0-9]*' in response:
+                if response.startswith('X:'):
                     # with self.location_lock:
                     #     location_data = response
                     # #     print(f"Location: {self.location}")
@@ -685,9 +691,12 @@ class AreaModeWindow(QWidget):
             self.move_to_safe_z()
             self.move_to_xy(x, y)
             self.move_to_surface()
-            self.increment_logic()
+            time.sleep(5)
+            if abs(float(self.current_z) - 50.0) < 0.01:
+                self.increment_logic()
             self.append_single_data()
-            self.move_to_safe_z()
+            if self.button_not_pressed is False:
+                self.move_to_safe_z()
             #self.button_not_pressed = True
 
     def generate_points(self):
@@ -715,8 +724,8 @@ class AreaModeWindow(QWidget):
 
     def TEST(self):
         #self.send_single_gcode("G28\n")
-        #self.send_gcode_Test()
-        self.send_M114()
+        self.send_gcode_Test()
+        #self.send_M114()
 
     def print_points(self):
         if self.point_coords:
@@ -782,7 +791,11 @@ class AreaModeWindow(QWidget):
     def send_single_gcode(self, gcommand):
         try:
             # gcommand form should be 'G91\n'
-            self.serial.write(gcommand.encode())
+
+
+
+            if self.serial is not None:
+                self.serial.write(gcommand.encode())
         except Exception as e:
             print(f"Error: {e}")
 
@@ -792,17 +805,19 @@ class AreaModeWindow(QWidget):
 
     def move_to_surface(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
+        self.send_single_gcode("G90\n")
         self.send_single_gcode("G0 Z50\n")
         #self.send_single_gcode("M400\n")
 
 
     def move_to_safe_z(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
+        self.send_single_gcode("G90\n")
         self.send_single_gcode("G0 Z60\n")
 
     def increment_logic(self):
         try:
-            while self.button_not_pressed & self.on_surface: ###################这里逻辑好像有点问题
+            while self.button_not_pressed: ###################这里逻辑好像有点问题
                 self.send_single_gcode("G91\n")
                 self.send_single_gcode("G0 Z-0.01\n")
                 #self.send_single_gcode("M400\n")
@@ -830,7 +845,8 @@ class AreaModeWindow(QWidget):
         while True:
             self.send_M114()  # Call the function to send the command
             print("Sent M114 in separate thread")
-            time.sleep(3)
+            print(self.current_z)
+            time.sleep(5)
     def microcontroller_reading(self):
         try:
             print("1")
