@@ -358,6 +358,8 @@ class AreaModeWindow(QWidget):
         self.test1 = None
         self.test2 = None
         self.counter1 = None
+        self.z_activation = None
+        self.z_activation_list = []
 
         self.init_ui()
 
@@ -529,8 +531,8 @@ class AreaModeWindow(QWidget):
 
         baud = int(self.baud_combo.currentText())
         try:
-            self.serial = serial.Serial(port, baud)
-            print(self.serial)
+            self.serial = serial.Serial(port, baud, timeout=10)
+            #print(self.serial)
             print("Printer is now online!")
             self.connect_button.setText('Disconnect')
             self.connect_button.clicked.disconnect(self.connect)
@@ -630,21 +632,21 @@ class AreaModeWindow(QWidget):
 
                     activated_force = response.split(';')[1][:-5]  # records
                     activated_signal = response.split(';')[0][2:]
-                    print(response)
+                    #print(response)
                     self.microcontroller_debug_monitor.append(
                         f"force: {activated_force}, signal: {activated_signal}")
-                    print(f"force: {activated_force}, signal: {activated_signal}")
+                    #print(f"force: {activated_force}, signal: {activated_signal}")
 
                     # store the force data & distance data
                     self.force_data = activated_force
-                    print(self.button_not_pressed)
+                    #print(self.button_not_pressed)
                     if activated_signal == "0":
                         self.button_not_pressed = True
                     if activated_signal == "1":
                         self.button_not_pressed = False
-                        print("button activated~")
+                        #print("button activated~")
                         #self.append_single_data()
-                        print(self.button_not_pressed)
+                        #print(self.button_not_pressed)
 
 
     def read_serial(self):
@@ -677,8 +679,8 @@ class AreaModeWindow(QWidget):
     # New added
     def send_gcode_Test(self):
         # 先创建一个现成的list
-        testpoint_list = [[134, 118.5, None, None]]
-                          #[-0.82, 0.75, None, None],
+        testpoint_list = [[134, 118.5, None, None],
+                          [160, 160, None, None]]
                           #[0.17, -1.92, None, None],
                           #[1.76, 2.3, None, None],
                           #[-2.86, -0.51, None, None]]
@@ -694,9 +696,22 @@ class AreaModeWindow(QWidget):
             time.sleep(5)
             if abs(float(self.current_z) - 50.0) < 0.01:
                 self.increment_logic()
-            self.append_single_data()
+            time.sleep(1)
+            self.send_M114()
+            time.sleep(1)
+            self.append_single_data()   #这两行有问题，没办法提取数据
+            time.sleep(3)
+
+            self.extract_distance_data()
+            print(self.z_activation)
+            print(self.current_z)
+            self.z_activation_list.append(self.current_z)
+            #self.debug_monitor.append(self.z_activation)
             if self.button_not_pressed is False:
                 self.move_to_safe_z()
+            #self.append_single_data()
+        print(self.z_activation_list)
+
             #self.button_not_pressed = True
 
     def generate_points(self):
@@ -797,6 +812,7 @@ class AreaModeWindow(QWidget):
             if self.serial is not None:
                 self.serial.write(gcommand.encode())
         except Exception as e:
+            print("333")
             print(f"Error: {e}")
 
     def move_to_xy(self, x_coord, y_coord):
@@ -821,10 +837,11 @@ class AreaModeWindow(QWidget):
                 self.send_single_gcode("G91\n")
                 self.send_single_gcode("G0 Z-0.01\n")
                 #self.send_single_gcode("M400\n")
-                print("command sent")
+                #print("command sent")
             print("Increment process done")
             return  # 这里还可以做一个本地的记录器，看看和机器出来的哪个准一些
         except Exception as e:
+            print("111")
             print(f"Error: {e}")
 
 
@@ -835,6 +852,7 @@ class AreaModeWindow(QWidget):
             self.debug_monitor.append(response)
             # 这里逻辑要和serial相关，很重要，要一点点弄清楚
         except Exception as e:
+            print("222")
             print(f"Error: {e}")
 
     def send_M114(self):
@@ -865,7 +883,7 @@ class AreaModeWindow(QWidget):
                 activated_signal = response.split(';')[0][2:]
                 print(response)
                 self.microcontroller_debug_monitor.append(f"force: {activated_force}, signal: {activated_signal}")
-                print(f"force: {activated_force}, signal: {activated_signal}")
+                #print(f"force: {activated_force}, signal: {activated_signal}")
 
                 # store the force data & distance data
                 self.force_data = activated_force
@@ -881,7 +899,9 @@ class AreaModeWindow(QWidget):
 
     def extract_distance_data(self):
         try:
+            self.send_M114()
             z_value = re.search(r'Z:(\d+\.\d+)', self.debug_monitor.toPlainText()).group(1)
+            self.z_activation = float(z_value)
             z_activation_distance = 50.00 - float(z_value)
 
         except AttributeError:
