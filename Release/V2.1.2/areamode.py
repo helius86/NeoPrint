@@ -9,6 +9,7 @@ class AreaModeFunc:
 
 
     def generateTestpoints(self, radius_button, numPoints):
+        new_center = [134, 118.5]  # the coordinates of the new center
         radius = radius_button - 0.1  # so the very edge is not pressed
         points = []
         points.append([0, 0, None, None])
@@ -22,8 +23,8 @@ class AreaModeFunc:
                 r = radius * math.sqrt(k - 1 / 2) / math.sqrt(numPoints - (boundary + 1) / 2)
 
             angle = k * 2 * math.pi / phi / phi
-            curr_x = r * math.cos(angle)
-            curr_y = r * math.sin(angle)
+            curr_x = r * math.cos(angle) + new_center[0]
+            curr_y = r * math.sin(angle) + new_center[1]
             points.append([round(curr_x, 2), round(curr_y, 2), None, None])
         self.point_coords = points
         return points
