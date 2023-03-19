@@ -545,9 +545,9 @@ class AreaModeWindow(QWidget):
             self.reader_thread.daemon = True
             self.reader_thread.start()
 
-            self.m114_thread = threading.Thread(target=self.send_M114_thread)
-            self.m114_thread.daemon = True
-            self.m114_thread.start()
+            #self.m114_thread = threading.Thread(target=self.send_M114_thread)
+            #self.m114_thread.daemon = True
+            #self.m114_thread.start()
 
         except:
             self.debug_monitor.append('Failed to connect')
@@ -679,9 +679,9 @@ class AreaModeWindow(QWidget):
     # New added
     def send_gcode_Test(self):
         # 先创建一个现成的list
-        testpoint_list = [[134, 118.5, None, None],
-                          [160, 160, None, None]]
-                          #[0.17, -1.92, None, None],
+        testpoint_list = [[128.7, 91.1, None, None],
+                          [141, 91.1, None, None],
+                          [118.2, 91.1, None, None]]
                           #[1.76, 2.3, None, None],
                           #[-2.86, -0.51, None, None]]
         # 先用一个坐标
@@ -694,13 +694,14 @@ class AreaModeWindow(QWidget):
             self.move_to_xy(x, y)
             self.move_to_surface()
             time.sleep(5)
-            if abs(float(self.current_z) - 50.0) < 0.01:
-                self.increment_logic()
+            #if abs(float(self.current_z) - 50.0) < 0.01:
+            self.send_single_gcode("M400\n")
+            self.increment_logic()
             time.sleep(1)
             self.send_M114()
             time.sleep(1)
             self.append_single_data()   #这两行有问题，没办法提取数据
-            time.sleep(3)
+            time.sleep(1)
 
             self.extract_distance_data()
             print(self.z_activation)
@@ -822,14 +823,14 @@ class AreaModeWindow(QWidget):
     def move_to_surface(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
         self.send_single_gcode("G90\n")
-        self.send_single_gcode("G0 Z50\n")
+        self.send_single_gcode("G0 Z37\n")
         #self.send_single_gcode("M400\n")
 
 
     def move_to_safe_z(self):
         # 这里先用一个固定的z值，后面再开发从button profile引出这个不同z值的功能
         self.send_single_gcode("G90\n")
-        self.send_single_gcode("G0 Z60\n")
+        self.send_single_gcode("G0 Z45\n")
 
     def increment_logic(self):
         try:
