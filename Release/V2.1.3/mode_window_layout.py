@@ -347,6 +347,7 @@ class AreaModeWindow(QWidget):
         self.location = None  # Initialize location variable
         self.location_lock = threading.Lock()
         self.button_not_pressed = True
+        self.point_coords = None
 
         #self.gf = general_function
         self.force_data = None
@@ -359,6 +360,9 @@ class AreaModeWindow(QWidget):
         self.local_increment_list = []
         self.z_activation = None
         self.z_activation_list = []
+
+        self.surface_z = None
+
 
         self.init_ui()
 
@@ -377,7 +381,7 @@ class AreaModeWindow(QWidget):
         self.button_combo.addItems(['Button Profile 1', 'Button Profile 2'])
         button_layout.addWidget(self.button_combo)
         self.test_button = QPushButton('Test')
-        self.test_button.clicked.connect(self.send_gcode)
+        self.test_button.clicked.connect(self.TEST)
         button_layout.addWidget(self.test_button)
         printer_layout.addLayout(button_layout)
 
@@ -389,7 +393,7 @@ class AreaModeWindow(QWidget):
         self.test_point_combo.addItems(['1', '3', '5'])
         test_point_layout.addWidget(self.test_point_combo)
         self.generate_button = QPushButton('Generate')
-        self.generate_button.clicked.connect(self.generate_points)
+        self.generate_button.clicked.connect(self.click_to_generate_points)
         test_point_layout.addWidget(self.generate_button)
         printer_layout.addLayout(test_point_layout)
 
@@ -605,7 +609,7 @@ class AreaModeWindow(QWidget):
                     #print(response)
                     self.microcontroller_debug_monitor.append(
                         f"force: {activated_force}, signal: {activated_signal}")
-                    #print(f"force: {activated_force}, signal: {activated_signal}")
+                    print(f"force: {activated_force}, signal: {activated_signal}")
 
                     # store the force data & distance data
                     self.force_data = activated_force
@@ -652,21 +656,18 @@ class AreaModeWindow(QWidget):
 
     def send_gcode_Test(self):
         # 先创建一个现成的list
-        testpoint_list = [[128.7, 91.1, None, None],
-                          [141, 91.1, None, None],
-                          [118.2, 91.1, None, None]]
-                          #[1.76, 2.3, None, None],
-                          #[-2.86, -0.51, None, None]]
+        testpoint_list = self.point_coords
         # 先用一个坐标
         # 从list里生成gcode
         # 下面补充这个method，然后进行测试
+        round = 0
         for point in testpoint_list:
             self.local_increment_record = 0
 
             x, y = point[0], point[1]
-            self.move_to_safe_z(45) #这里的45后面需要从profile里提取
+            self.move_to_safe_z(50) #这里的45后面需要从profile里提取
             self.move_to_xy(x, y)
-            self.move_to_surface(37) #这里的37后面需要从profile里提取
+            self.move_to_surface(45.9) #这里的37后面需要从profile里提取
             time.sleep(5)
             self.send_single_gcode("M400\n")
             self.increment_logic()
@@ -682,24 +683,34 @@ class AreaModeWindow(QWidget):
             print(self.current_z)
             self.z_activation_list.append(self.current_z)
 
+            self.point_coords[round][2] = 45.7 - float(self.current_z) # give the current_z value back to the point_coords
+            self.point_coords[round][3] = self.force_data
+            round += 1
+
             if self.button_not_pressed is False:
                 self.move_to_safe_z(45)
 
-
-        print(self.z_activation_list)
-        print(self.local_increment_list)
+        self.move_to_safe_z(50)
+        print("z_activation_list:", self.z_activation_list)
+        print("local_increment_list:", self.local_increment_list)
+        self.print_points()
 
     """
     #####################################################
     Generate points
     #####################################################
     """
-    def generate_points(self):
-        radius_button = 3
-        numPoints = 5
+    def click_to_generate_points(self):
+        self.generate_points(3, int(self.test_point_combo.currentText()))
+
+
+    def generate_points(self, radius_button, numPoints):
+        #radius_button = 3
+        #numPoints = 5
+        new_center = [132.5, 118.4] # This value is fixed, but need to recalibrate
         radius = radius_button - 0.1  # so the very edge is not pressed
         points = []
-        points.append([0, 0, None, None])
+        points.append([new_center[0], new_center[1], None, None])
         boundary = math.sqrt(numPoints)
         phi = (math.sqrt(5) + 1) / 2
 
@@ -710,12 +721,12 @@ class AreaModeWindow(QWidget):
                 r = radius * math.sqrt(k - 1 / 2) / math.sqrt(numPoints - (boundary + 1) / 2)
 
             angle = k * 2 * math.pi / phi / phi
-            curr_x = r * math.cos(angle)
-            curr_y = r * math.sin(angle)
+            curr_x = r * math.cos(angle) + new_center[0]
+            curr_y = r * math.sin(angle) + new_center[1]
             points.append([round(curr_x, 2), round(curr_y, 2), None, None])
         self.point_coords = points
         print(points)
-        return points
+        return 1
     def print_points(self):
         if self.point_coords:
             for point in self.point_coords:
@@ -762,9 +773,15 @@ class AreaModeWindow(QWidget):
     def increment_logic(self):
         try:
             while self.button_not_pressed:
+                if float(self.force_data) > 200:
+                    self.send_single_gcode("M112\n")
+                    exit(0)
                 self.send_single_gcode("G91\n")
                 self.send_single_gcode("G0 Z-0.01\n")
                 self.local_increment_record += 1  # local record of increment, can be used to compare with test result
+                if float(self.force_data) > 200: # or float(self.current_z) < 44.9
+                    self.send_single_gcode("M112\n")
+                    exit(0)
             print("Increment process done")
             return
         except Exception as e:
@@ -792,7 +809,7 @@ class AreaModeWindow(QWidget):
             self.send_M114()
             z_value = re.search(r'Z:(\d+\.\d+)', self.debug_monitor.toPlainText()).group(1)
             self.z_activation = float(z_value)
-            z_activation_distance = 50.00 - float(z_value)
+            z_activation_distance = 45.7 - float(z_value)
 
         except AttributeError:
             print('Error: Unable to extract Z value from debug monitor')
