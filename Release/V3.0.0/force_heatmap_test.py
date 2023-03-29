@@ -22,7 +22,7 @@ heatmap = np.zeros((window_size, window_size))
 # Iterate through data points and populate the heatmap matrix
 for x, y, activation_distance, activation_force in data:
     xi, yi = int(x), int(y)
-    weight = activation_force # activation_distance * activation_force
+    weight = activation_force * window_size / max([point[3] for point in data])  # scale to size of window to get darker colour
     heatmap[yi, xi] += weight
 
 # Apply a Gaussian filter to smooth the heatmap and create the heat effect around points
