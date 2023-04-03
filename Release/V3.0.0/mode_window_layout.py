@@ -11,8 +11,61 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, \
     QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton, QMenu
+import matplotlib as plt
+
+
+import pyqtgraph as pg
+import numpy as np
+from scipy.ndimage import gaussian_filter
+from matplotlib.patches import Circle
 
 #from areamode import AreaModeFunc
+
+class HeatmapWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Set the fixed window size and create an empty matrix for the heatmap
+        self.window_size = 300
+        self.heatmap = np.zeros((self.window_size, self.window_size))
+
+        # Iterate through data points and populate the heatmap matrix
+        self.data = [
+            [175.2, 91.1, 0.62, 45.4],
+            [220.8, 143.7, 0.93, 78.9]
+        ]
+
+        for x, y, activation_distance, activation_force in self.data:
+            xi, yi = int(x), int(y)
+            weight = activation_force * self.window_size / max([point[3] for point in self.data])  # scale to size of window to get darker colour
+            self.heatmap[yi, xi] += weight
+
+        # Apply a Gaussian filter to smooth the heatmap and create the heat effect around points
+        sigma = 10
+        self.smoothed_heatmap = gaussian_filter(self.heatmap, sigma)
+
+        # Create a circular mask
+        y, x = np.ogrid[-self.window_size // 2:self.window_size // 2, -self.window_size // 2:self.window_size // 2]
+        mask = x ** 2 + y ** 2 <= (self.window_size // 2) ** 2
+
+        # Apply the mask to the smoothed_heatmap
+        self.smoothed_heatmap[~mask] = 0
+
+        # Create a PyQtGraph ImageView
+        self.imageView = pg.ImageView()
+
+        # Set the colormap
+        colormap = pg.colormap.get('viridis')
+        lut = colormap.getLookupTable()
+
+        # Apply the colormap to the smoothed_heatmap
+        #self.colored_heatmap = pg.applyColorMap(self.smoothed_heatmap, lut)
+
+        # Plot the heatmap
+        self.imageView.setImage(self.smoothed_heatmap)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.imageView)
 
 class SingleModeWindow(QWidget):
 
@@ -33,7 +86,14 @@ class SingleModeWindow(QWidget):
 
     def init_ui(self):
         # Create central widget and main layout
-        main_layout = QVBoxLayout(self)
+        #main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
+
+        left_layout = QVBoxLayout()
+
+
+
+
 
         # Create 3D printer layout
         printer_layout = QVBoxLayout()
@@ -103,7 +163,7 @@ class SingleModeWindow(QWidget):
         printer_layout.addLayout(receive_layout)
 
         # Add printer layout to main layout
-        main_layout.addLayout(printer_layout)
+        left_layout.addLayout(printer_layout)
 
         # Create microcontroller layout
         microcontroller_layout = QVBoxLayout()
@@ -137,9 +197,9 @@ class SingleModeWindow(QWidget):
         microcontroller_port_baud_layout.addLayout(microcontroller_connect_layout)
 
         # Add microcontroller port and baud layouts to main layout
-        main_layout.addLayout(microcontroller_port_baud_layout)
+        left_layout.addLayout(microcontroller_port_baud_layout)
 
-########################################################
+
         # Create microcontroller debug monitor layout
         receive_layout_microcontroller = QHBoxLayout()
         receive_label_microcontroller = QLabel('Microcontroller Receive:')
@@ -148,9 +208,16 @@ class SingleModeWindow(QWidget):
         self.microcontroller_debug_monitor.setMaximumHeight(100)  # set maximum height to 100 pixels
         self.microcontroller_debug_monitor.setReadOnly(True)
         receive_layout_microcontroller.addWidget(self.microcontroller_debug_monitor)
-        main_layout.addLayout(receive_layout_microcontroller)
+        left_layout.addLayout(receive_layout_microcontroller)
 
-        self.setWindowTitle('NeoPrint')
+
+        ######################################################## New
+        main_layout.addLayout(left_layout)
+
+        self.heatmap_widget = HeatmapWidget()
+        main_layout.addWidget(self.heatmap_widget)
+
+        self.setWindowTitle('NeoPrint - Single Mode')
         self.resize(800, 400)
 
     def send_M114(self):

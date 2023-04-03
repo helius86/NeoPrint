@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
 
 
         self.setWindowTitle('NeoPrint')
-        self.resize(800, 400)
+        self.resize(1200, 600)
 
     def homing(self):
         #self.test_window.send_command('G28')
