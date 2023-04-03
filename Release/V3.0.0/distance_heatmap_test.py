@@ -52,7 +52,7 @@ image = colormap(smoothed_heatmap)
 image[~mask, 3] = 0  # Set the alpha channel to 0 outside the circular mask
 
 # Plot the heatmap
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=(7.5, 6))
 heatmap = plt.imshow(image, origin='lower', extent=[0, window_size, 0, window_size], aspect='auto', cmap=colormap)
 
 #plt.colorbar(label='Activation Intensity')
