@@ -57,17 +57,68 @@ heatmap = plt.imshow(image, origin='lower', extent=[0, window_size, 0, window_si
 
 #plt.colorbar(label='Activation Intensity')
 cbar = plt.colorbar(heatmap)
-cbar.set_label('Activation Distance')
+cbar.set_label('Activation Distance (mm)')
 heatmap.set_clim(vmin=0, vmax=max(activation_distances))
 
+
+annotations = []
 
 # Plot the data points with different colors for activation distance and different alpha for activation force
 for i, (x, y, _, _) in enumerate(data):
     plt.scatter(x, y, color=colormap(normalized_distances[i]), s=125, edgecolors='black', marker='o')
+    # Add annotations to each point
+    annotation = plt.annotate(activation_distances[i], (x, y),
+                    textcoords="offset points",
+                    xytext=(0, -5),
+                    ha='center', fontsize=12,
+                    #bbox=dict(facecolor='white', edgecolor='black', boxstyle='round', alpha=0.5),
+                    bbox=dict(facecolor='white', boxstyle='round', alpha=0.0),
+                    alpha=0.0)  # set initial visibility to False
+    annotations.append(annotation)
 
 plt.title('Activation Heatmap')
 plt.xlabel('X Coordinate')
 plt.ylabel('Y Coordinate')
 plt.gca().set_facecolor((0, 0, 0, 0))  # Set background color to transparent
 plt.gca().add_patch(circle) # add circle outline to show edge of button
+
+show_all_clicked = False
+
+# Function to show annotations when clicking near points
+def hover(event):
+    global annotations, show_all_clicked
+    for annotation in annotations:
+        if annotation.contains(event)[0] or show_all_clicked:
+            annotation.set_alpha(1.0)  # Set alpha to 1 to make the annotation visible
+            annotation.set_bbox(dict(facecolor='white', boxstyle='round', alpha=1.0))
+        else:
+            annotation.set_alpha(0.0)
+            annotation.set_bbox(dict(facecolor='white', boxstyle='round', alpha=0.0))
+    plt.draw()
+
+# Connect the click event to the figure
+fig = plt.gcf()
+fig.canvas.mpl_connect("motion_notify_event", hover)
+
+# Function to show/hide all annotations on button click
+def show_all(event):
+    global annotations, show_all_clicked
+    for annotation in annotations:
+        annotation.set_alpha(1.0)  # Set alpha to 1 to make the annotation visible
+        annotation.set_bbox(dict(facecolor='white', boxstyle='round', alpha=1.0))
+
+    if not show_all_clicked:
+        show_button_obj.label.set_text('Hover Mode')
+    else:
+        show_button_obj.label.set_text('Display All')
+
+    show_all_clicked = not show_all_clicked
+    plt.draw()
+
+
+# Add "Show All" button
+show_button = plt.axes([0.85, 0.9, 0.13, 0.05])
+show_button_obj = plt.Button(show_button, 'Show All')
+show_button_obj.on_clicked(show_all)
+
 plt.show()
