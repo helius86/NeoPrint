@@ -11,8 +11,9 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, \
     QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton, QMenu
-import matplotlib as plt
-
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import pyqtgraph as pg
 import numpy as np
@@ -25,47 +26,76 @@ class HeatmapWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Set the fixed window size and create an empty matrix for the heatmap
-        self.window_size = 300
-        self.heatmap = np.zeros((self.window_size, self.window_size))
+        self.init_heatmap()
 
-        # Iterate through data points and populate the heatmap matrix
+        # Create a Figure and add it to a FigureCanvas
+        fig = Figure()
+        self.canvas = FigureCanvas(fig)
+
+        # Draw the heatmap on the canvas
+        self.draw_heatmap(fig)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.canvas)
+
+    def init_heatmap(self):
         self.data = [
             [175.2, 91.1, 0.62, 45.4],
-            [220.8, 143.7, 0.93, 78.9]
+            [220.8, 143.7, 0.93, 78.9],
+            [92.4, 75.6, 1.84, 150.2],
+            [40.1, 169.5, 1.01, 103.5],
+            [196.3, 53.2, 0.75, 68.9],
+            [119.7, 183.2, 2.01, 188.1],
+            [269.1, 211.3, 0.92, 121.7],
+            [259.1, 211.3, 0.34, 11.7]
         ]
+
+        self.window_size = 300
+        self.heatmap = np.zeros((self.window_size, self.window_size))
 
         for x, y, activation_distance, activation_force in self.data:
             xi, yi = int(x), int(y)
             weight = activation_force * self.window_size / max([point[3] for point in self.data])  # scale to size of window to get darker colour
             self.heatmap[yi, xi] += weight
 
-        # Apply a Gaussian filter to smooth the heatmap and create the heat effect around points
-        sigma = 10
-        self.smoothed_heatmap = gaussian_filter(self.heatmap, sigma)
+        self.sigma = 10
+        self.smoothed_heatmap = gaussian_filter(self.heatmap, self.sigma)
 
-        # Create a circular mask
         y, x = np.ogrid[-self.window_size // 2:self.window_size // 2, -self.window_size // 2:self.window_size // 2]
-        mask = x ** 2 + y ** 2 <= (self.window_size // 2) ** 2
+        self.mask = x ** 2 + y ** 2 <= (self.window_size // 2) ** 2
 
-        # Apply the mask to the smoothed_heatmap
-        self.smoothed_heatmap[~mask] = 0
+    def draw_heatmap(self, fig):
+        ax = fig.add_subplot(1, 1, 1)
 
-        # Create a PyQtGraph ImageView
-        self.imageView = pg.ImageView()
+        colormap = plt.get_cmap('YlOrBr')
+        image = colormap(self.smoothed_heatmap)
+        image[~self.mask, 3] = 0
 
-        # Set the colormap
-        colormap = pg.colormap.get('viridis')
-        lut = colormap.getLookupTable()
+        heatmap = ax.imshow(image, origin='lower', extent=[0, self.window_size, 0, self.window_size], aspect='auto',
+                            cmap=colormap)
+        cbar = fig.colorbar(heatmap)
+        cbar.set_label('Activation Force')
 
-        # Apply the colormap to the smoothed_heatmap
-        #self.colored_heatmap = pg.applyColorMap(self.smoothed_heatmap, lut)
+        activation_distances = [point[2] for point in self.data]
+        activation_forces = [point[3] for point in self.data]
+        normalized_distances = np.interp(activation_distances, (min(activation_distances), max(activation_distances)),
+                                         (0, 1))
+        normalized_forces = np.interp(activation_forces, (0, max(activation_forces)), (0, 1))
 
-        # Plot the heatmap
-        self.imageView.setImage(self.smoothed_heatmap)
+        for i, (x, y, _, _) in enumerate(self.data):
+            ax.scatter(x, y, color=colormap(normalized_forces[i]), s=125, edgecolors='black', marker='o')
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.imageView)
+        circle = Circle((self.window_size / 2, self.window_size / 2), radius=self.window_size / 2, edgecolor='black',
+                        facecolor='none')
+        ax.add_patch(circle)
+
+        ax.set_title('Activation Heatmap')
+        ax.set_xlabel('X Coordinate')
+        ax.set_ylabel('Y Coordinate')
+        ax.set_facecolor((0, 0, 0, 0))
+
+        self.canvas.draw()
+
 
 class SingleModeWindow(QWidget):
 
