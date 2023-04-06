@@ -9,7 +9,9 @@ import math
 import re
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, \
+from PyQt6.QtGui import QMovie
+
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, QGroupBox,  \
     QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton, QMenu
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -237,12 +239,22 @@ class SingleModeWindow(QWidget):
         receive_layout_microcontroller.addWidget(self.microcontroller_debug_monitor)
         left_layout.addLayout(receive_layout_microcontroller)
 
-
         ######################################################## New
         main_layout.addLayout(left_layout)
 
-        self.heatmap_widget = HeatmapWidget()
-        main_layout.addWidget(self.heatmap_widget)
+        # Create right layout
+        right_layout = QVBoxLayout()
+
+        # Add first heatmap widget
+        self.heatmap_widget1 = HeatmapWidget()
+        right_layout.addWidget(self.heatmap_widget1)
+
+        # Add second heatmap widget
+        self.heatmap_widget2 = HeatmapWidget()
+        right_layout.addWidget(self.heatmap_widget2)
+
+        # Add right layout to the main layout
+        main_layout.addLayout(right_layout)
 
         self.setWindowTitle('NeoPrint - Single Mode')
         self.resize(800, 400)
@@ -432,6 +444,9 @@ class SingleModeWindow(QWidget):
                     self.test_data += response
 
                 time.sleep(0.01)
+
+
+
 class AreaModeWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -460,12 +475,57 @@ class AreaModeWindow(QWidget):
 
         self.init_ui()
 
+
     def init_ui(self):
-        # Create central widget and main layout
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
+
+        # Create left layout
+        left_layout = QVBoxLayout()
+
+        # Group 3D printer and microcontroller layouts in separate QGroupBoxes
+        printer_groupbox = QGroupBox("3D Printer")
+        microcontroller_groupbox = QGroupBox("Microcontroller")
+        status_groupbox = QGroupBox("Status")
+
+        printer_layout = self.create_printer_layout()
+        microcontroller_layout = self.create_microcontroller_layout()
+        status_layout = self.create_status_layout()
+
+        printer_groupbox.setLayout(printer_layout)
+        microcontroller_groupbox.setLayout(microcontroller_layout)
+        status_groupbox.setLayout(status_layout)
+
+        left_layout.addWidget(printer_groupbox)
+        left_layout.addWidget(microcontroller_groupbox)
+        left_layout.addWidget(status_groupbox)
+        left_layout.addStretch()
+
+        # Add left layout to the main layout
+        main_layout.addLayout(left_layout)
+
+        # Create right layout
+        right_layout = QVBoxLayout()
+
+        # Add first heatmap widget
+        self.heatmap_widget1 = HeatmapWidget()
+        right_layout.addWidget(self.heatmap_widget1)
+
+        # Add second heatmap widget
+        self.heatmap_widget2 = HeatmapWidget()
+        right_layout.addWidget(self.heatmap_widget2)
+
+        # Add right layout to the main layout
+        main_layout.addLayout(right_layout)
+
+        self.setWindowTitle('NeoPrint - Single Mode')
+        self.resize(800, 400)
+
+    def create_printer_layout(self):
 
         # Create 3D printer layout
         printer_layout = QVBoxLayout()
+
+        printer_layout.setSpacing(10)
 
         # Create button layout
         button_layout = QHBoxLayout()
@@ -495,8 +555,6 @@ class AreaModeWindow(QWidget):
         self.TESTbutton = QPushButton('TESTBY')
         self.TESTbutton.clicked.connect(self.TEST)
         test_point_layout.addWidget(self.TESTbutton)
-
-
 
         # Create port layout
         port_layout = QHBoxLayout()
@@ -550,11 +608,11 @@ class AreaModeWindow(QWidget):
         receive_layout.addWidget(self.debug_monitor)
         printer_layout.addLayout(receive_layout)
 
-        # Add printer layout to main layout
-        main_layout.addLayout(printer_layout)
+        return printer_layout
 
-        # Create microcontroller layout
+    def create_microcontroller_layout(self):
         microcontroller_layout = QVBoxLayout()
+        microcontroller_layout.setSpacing(10)
 
         # Create microcontroller port layout
         microcontroller_port_layout = QHBoxLayout()
@@ -585,9 +643,8 @@ class AreaModeWindow(QWidget):
         microcontroller_port_baud_layout.addLayout(microcontroller_connect_layout)
 
         # Add microcontroller port and baud layouts to main layout
-        main_layout.addLayout(microcontroller_port_baud_layout)
+        microcontroller_layout.addLayout(microcontroller_port_baud_layout)
 
-########################################################
         # Create microcontroller debug monitor layout
         receive_layout_microcontroller = QHBoxLayout()
         receive_label_microcontroller = QLabel('Microcontroller Receive:')
@@ -596,10 +653,60 @@ class AreaModeWindow(QWidget):
         self.microcontroller_debug_monitor.setMaximumHeight(100)  # set maximum height to 100 pixels
         self.microcontroller_debug_monitor.setReadOnly(True)
         receive_layout_microcontroller.addWidget(self.microcontroller_debug_monitor)
-        main_layout.addLayout(receive_layout_microcontroller)
 
-        self.setWindowTitle('NeoPrint')
-        self.resize(800, 400)
+        # Add microcontroller debug monitor layout to the main layout
+        microcontroller_layout.addLayout(receive_layout_microcontroller)
+
+        return microcontroller_layout
+
+    def create_status_layout(self):
+        status_layout = QVBoxLayout()
+
+        # Add spacing
+        status_layout.setSpacing(10)
+
+        # Create printer status layout
+        printer_status_layout = QHBoxLayout()
+        printer_status_label = QLabel('Printer:')
+        printer_status_layout.addWidget(printer_status_label)
+        self.printer_status_value = QLabel('Offline')
+        printer_status_layout.addWidget(self.printer_status_value)
+
+        # Create microcontroller status layout
+        microcontroller_status_layout = QHBoxLayout()
+        microcontroller_status_label = QLabel('Microcontroller:')
+        microcontroller_status_layout.addWidget(microcontroller_status_label)
+        self.microcontroller_status_value = QLabel('Offline')
+        microcontroller_status_layout.addWidget(self.microcontroller_status_value)
+
+        # Add printer and microcontroller status layouts to the status_layout
+        status_layout.addLayout(printer_status_layout)
+        status_layout.addLayout(microcontroller_status_layout)
+
+        # Create gif layout
+        gif_layout = QHBoxLayout()
+
+        # Add printer gif
+        self.printer_status_gif_label = QLabel()
+        printer_gif_movie = QMovie('test1.gif')
+        self.printer_status_gif_label.setMovie(printer_gif_movie)
+        printer_gif_movie.start()
+        gif_layout.addWidget(self.printer_status_gif_label)
+
+        # Add microcontroller gif
+        self.microcontroller_status_gif_label = QLabel()
+        microcontroller_gif_movie = QMovie('t2.gif')
+        self.microcontroller_status_gif_label.setMovie(microcontroller_gif_movie)
+        microcontroller_gif_movie.start()
+        gif_layout.addWidget(self.microcontroller_status_gif_label)
+
+        # Add gif layout to the status_layout
+        status_layout.addLayout(gif_layout)
+
+        return status_layout
+
+
+
 
     def connect_microcontroller(self):
         port = self.microcontroller_port_combo.currentText()
