@@ -17,6 +17,9 @@ class ModeSelectDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+
+        self.setWindowTitle('NeoPrint: Mode Selection')
+
         # Create dialog layout
         dialog_layout = QVBoxLayout(self)
 
@@ -25,7 +28,7 @@ class ModeSelectDialog(QDialog):
         dialog_layout.addLayout(form_layout)
 
         # Create radio buttons for mode selection
-        self.single_point_radio = QRadioButton('SinglePointTest', self)
+        self.single_point_radio = QRadioButton('Single-point test', self)
         self.multi_point_radio = QRadioButton('Multi-point test', self)
         form_layout.addRow(self.single_point_radio)
         form_layout.addRow(self.multi_point_radio)
@@ -38,7 +41,7 @@ class ModeSelectDialog(QDialog):
 
     def get_selected_mode(self):
         if self.single_point_radio.isChecked():
-            return 'SinglePointTest'
+            return 'Single-point test'
         elif self.multi_point_radio.isChecked():
             return 'Multi-point test'
         else:
@@ -59,7 +62,7 @@ class MainWindow(QMainWindow):
         mode_select_dialog = ModeSelectDialog(self)
         if mode_select_dialog.exec() == QDialog.DialogCode.Accepted:
             selected_mode = mode_select_dialog.get_selected_mode()
-            if selected_mode == 'SinglePointTest':
+            if selected_mode == 'Single-point test':
                 self.test_window = SingleModeWindow(self)
             elif selected_mode == 'Multi-point test':
                 self.test_window = AreaModeWindow(self)
@@ -114,7 +117,7 @@ class MainWindow(QMainWindow):
 
 
         self.setWindowTitle('NeoPrint')
-        self.resize(1200, 900)
+        self.resize(1100, 900)
 
     def homing(self):
         #self.test_window.send_command('G28')
@@ -214,7 +217,7 @@ class SinglePointTestResultWindow(QDialog):
         force_layout.addWidget(self.force_unit_label)
         layout.addLayout(force_layout)
 
-        self.setWindowTitle('Single Point Test')
+        self.setWindowTitle('Single-Point Test')
         self.resize(200, 100)  # set maximum width and height
 
     def set_values(self, distance, force):
@@ -256,7 +259,7 @@ class AreaModeResultWindow(QDialog):
         force_layout.addWidget(self.force_unit_label)
         layout.addLayout(force_layout)
 
-        self.setWindowTitle('Single Point Test')
+        self.setWindowTitle('Multi-Point Test')
         self.resize(200, 100)  # set maximum width and height
 
     def set_values(self, distance, force):

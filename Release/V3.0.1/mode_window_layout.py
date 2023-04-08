@@ -14,6 +14,7 @@ from PyQt6.QtGui import QMovie
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QComboBox, QGroupBox,  \
     QPushButton, QHBoxLayout, QVBoxLayout, QTextEdit, QMenuBar, QDialog, QDialogButtonBox, QFormLayout, QRadioButton, QMenu
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -22,9 +23,14 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from matplotlib.patches import Circle
 
+import tkinter
+
+BUTTON_MAX_COORD = 300 #assuming circular button
+
 #from areamode import AreaModeFunc
 
 class HeatmapWidget(QWidget):
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -41,6 +47,9 @@ class HeatmapWidget(QWidget):
         layout.addWidget(self.canvas)
 
     def init_heatmap(self):
+
+        global BUTTON_MAX_COORD
+
         self.data = [
             [175.2, 91.1, 0.62, 45.4],
             [220.8, 143.7, 0.93, 78.9],
@@ -52,7 +61,7 @@ class HeatmapWidget(QWidget):
             [259.1, 211.3, 0.34, 11.7]
         ]
 
-        self.window_size = 300
+        self.window_size = BUTTON_MAX_COORD #300 #should be the max coordinate
         self.heatmap = np.zeros((self.window_size, self.window_size))
 
         for x, y, activation_distance, activation_force in self.data:
@@ -215,7 +224,7 @@ class SingleModeWindow(QWidget):
 
         # Create microcontroller connect button layout
         microcontroller_connect_layout = QHBoxLayout()
-        self.microcontroller_connect_button = QPushButton('Connect Microcontroller')
+        self.microcontroller_connect_button = QPushButton('Connect')
         self.microcontroller_connect_button.clicked.connect(self.connect_microcontroller)
         microcontroller_connect_layout.addWidget(self.microcontroller_connect_button)
 
@@ -446,6 +455,13 @@ class SingleModeWindow(QWidget):
                 time.sleep(0.01)
 
 
+    ##########################
+
+
+
+
+
+
 
 class AreaModeWindow(QWidget):
     def __init__(self, parent=None):
@@ -539,13 +555,24 @@ class AreaModeWindow(QWidget):
         button_layout.addWidget(self.test_button)
         printer_layout.addLayout(button_layout)
 
+        # Create radio buttons for point generation options
+        point_generation_layout = QHBoxLayout()
+        point_generation_label = QLabel('Point Generation Options:')
+        point_generation_layout.addWidget(point_generation_label)
+        self.rings_radio = QRadioButton('Specify No. Rings', self)
+        self.points_radio = QRadioButton('Specify No. Points', self)
+        point_generation_layout.addWidget(self.rings_radio)
+        point_generation_layout.addWidget(self.points_radio)
+        printer_layout.addLayout(point_generation_layout)
+
         # Create generate point button layout
         test_point_layout = QHBoxLayout()
-        test_point_label = QLabel('Test Points:')
-        test_point_layout.addWidget(test_point_label)
-        self.test_point_combo = QComboBox()
-        self.test_point_combo.addItems(['1', '3', '5'])
-        test_point_layout.addWidget(self.test_point_combo)
+        self.test_point_label = QLabel('Number of Rings:')
+        test_point_layout.addWidget(self.test_point_label)
+        self.test_point_edit = QTextEdit(self)
+        self.test_point_edit.setMaximumHeight(28)
+        self.test_point_edit.setMaximumWidth(80)
+        test_point_layout.addWidget(self.test_point_edit)
         self.generate_button = QPushButton('Generate')
         self.generate_button.clicked.connect(self.click_to_generate_points)
         test_point_layout.addWidget(self.generate_button)
@@ -608,7 +635,20 @@ class AreaModeWindow(QWidget):
         receive_layout.addWidget(self.debug_monitor)
         printer_layout.addLayout(receive_layout)
 
+        # Set up radio button connections
+        self.rings_radio.clicked.connect(self.updatePointGeneration)
+        self.points_radio.clicked.connect(self.updatePointGeneration)
+        self.rings_radio.setChecked(True)  # default selection
+
         return printer_layout
+
+
+    def updatePointGeneration(self):
+        if self.rings_radio.isChecked():
+            self.test_point_label.setText('Number of Rings:')
+        else:
+            self.test_point_label.setText('Number of Points:')
+
 
     def create_microcontroller_layout(self):
         microcontroller_layout = QVBoxLayout()
@@ -632,7 +672,7 @@ class AreaModeWindow(QWidget):
 
         # Create microcontroller connect button layout
         microcontroller_connect_layout = QHBoxLayout()
-        self.microcontroller_connect_button = QPushButton('Connect Microcontroller')
+        self.microcontroller_connect_button = QPushButton('Connect')
         self.microcontroller_connect_button.clicked.connect(self.connect_microcontroller)
         microcontroller_connect_layout.addWidget(self.microcontroller_connect_button)
 
@@ -902,32 +942,121 @@ class AreaModeWindow(QWidget):
     #####################################################
     """
     def click_to_generate_points(self):
-        self.generate_points(3, int(self.test_point_combo.currentText()))
+        if self.rings_radio.isChecked():
+            self.generate_points(3, int(self.test_point_edit.toPlainText()), 'rings')
+        else:
+            self.generate_points(3, int(self.test_point_edit.toPlainText()), 'points')
 
 
-    def generate_points(self, radius_button, numPoints):
+    def generate_points(self, radius_button, num, mode):
+        global BUTTON_MAX_COORD
         #radius_button = 3
         #numPoints = 5
+
         new_center = [132.5, 118.4] # This value is fixed, but need to recalibrate
-        radius = radius_button - 0.1  # so the very edge is not pressed
+        radius = radius_button - 0.1
+
+        plot_centre = BUTTON_MAX_COORD/2 # scale to heatmap coordinates so that the heatmap and testpoints graphs are consistent
+        plot_radius = BUTTON_MAX_COORD/2
+
         points = []
         points.append([new_center[0], new_center[1], None, None])
-        boundary = math.sqrt(numPoints)
-        phi = (math.sqrt(5) + 1) / 2
+        x = []
+        y = []
+        x.append(plot_centre)
+        y.append(plot_centre)
 
-        for k in range(1, numPoints):
-            if (k > numPoints - boundary):
-                r = radius
-            else:
-                r = radius * math.sqrt(k - 1 / 2) / math.sqrt(numPoints - (boundary + 1) / 2)
+        if mode == 'rings': #user inputted number of rings (generate equidistant rings)
+            num = min(num, 7) # no more than 7 rings
+            total_points = 3 # number of points to be plotted in the current ring
+            curr_ring = 0
+            curr_radius = radius/num # radius of current ring that is being generated
+            curr_points = 0
+            angle = 0
 
-            angle = k * 2 * math.pi / phi / phi
-            curr_x = r * math.cos(angle) + new_center[0]
-            curr_y = r * math.sin(angle) + new_center[1]
-            points.append([round(curr_x, 2), round(curr_y, 2), None, None])
+            while curr_ring < num:
+                while curr_points < total_points:
+                    angle += 2 * math.pi / total_points
+                    curr_x = curr_radius * math.cos(angle) + new_center[0]
+                    curr_y = curr_radius * math.sin(angle) + new_center[1]
+
+                    # normalized coords to be plotted (different than the coords sent to the 3D-printer)
+                    x.append(round((curr_x - new_center[0]) * BUTTON_MAX_COORD / 2 / radius_button + plot_centre))
+                    y.append(round((curr_y - new_center[1]) * BUTTON_MAX_COORD / 2 / radius_button + plot_centre))
+
+                    curr_points += 1
+
+                curr_points = 0
+                angle += math.pi
+                curr_radius += radius/num
+                total_points += 3 #add 3 points per ring away from centre
+                curr_ring += 1
+
+
+        else: # user inputted number of points (generate equidistant points)
+            num = min(num, 99) # no more than 99 points
+
+            boundary = math.sqrt(num)
+            phi = (math.sqrt(5) + 1) / 2
+
+            for k in range(1, num):
+                if k > num - boundary:
+                    r = radius
+                else:
+                    r = radius * math.sqrt(k - 1 / 2) / math.sqrt(num - (boundary + 1) / 2)
+
+                angle = k * 2 * math.pi / phi / phi
+                curr_x = r * math.cos(angle) + new_center[0]
+                curr_y = r * math.sin(angle) + new_center[1]
+                points.append([round(curr_x, 2), round(curr_y, 2), None, None])
+
+                #normalized coords to be plotted (different than the coords sent to the 3D-printer)
+                x.append(round((curr_x - new_center[0])*BUTTON_MAX_COORD/2/radius_button + plot_centre))
+                y.append(round((curr_y - new_center[1])*BUTTON_MAX_COORD/2/radius_button + plot_centre))
+
+
         self.point_coords = points
         print(points)
+
+        try:
+            testpointsWindow = tkinter.Tk()
+            testpointsWindow.title('Generated Testpoints')
+            testpointsWindow.geometry('650x620')
+            testpointsWindow.configure(bg='white')
+
+            fig = plt.Figure(figsize=(5.5, 5.2))
+            fig.tight_layout()
+            testpoints_fig = fig.add_subplot(111)
+
+            # button circumference
+            circle = plt.Circle((plot_centre, plot_centre), plot_radius, color='c')
+            testpoints_fig.add_patch(circle)
+
+            colour = np.linspace(0, 1, len(x))
+
+            #for i, (x, y, _, _) in enumerate(points):
+            #    testpoints_fig.scatter(x, y, c=colour)
+            testpoints_fig.scatter(x, y, c=colour)
+
+            testpoints_fig.set_xlabel('x-position')
+            testpoints_fig.set_ylabel('y-position')
+            testpoints_fig.set_title("Testpoint Locations")
+            canvas = FigureCanvasTkAgg(fig, master=testpointsWindow)
+            canvas.draw()
+            canvas.get_tk_widget().pack()
+
+            instr = tkinter.StringVar(testpointsWindow)
+            instrLabel = tkinter.Label(testpointsWindow, textvariable=instr, bg='white', fg='blue')
+            instr.set("The cyan circle represents the button. The dots represent the generated testpoints.\n" +
+                      "Darker dots will be tested first.")
+            instrLabel.pack(anchor='center', padx=5, pady=5)
+            testpointsWindow.mainloop()
+
+        finally:
+            return 1
+
         return 1
+
     def print_points(self):
         if self.point_coords:
             for point in self.point_coords:
@@ -947,6 +1076,7 @@ class AreaModeWindow(QWidget):
     def send_single_gcode(self, gcommand):
         try:
             if self.serial is not None:
+                self.serial.write(gcommand.encode())
                 self.serial.write(gcommand.encode())
         except Exception as e:
             print("333")
