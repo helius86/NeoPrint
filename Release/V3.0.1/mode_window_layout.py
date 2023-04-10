@@ -488,6 +488,12 @@ class AreaModeWindow(QWidget):
 
         self.surface_z = None
 
+        #################
+        self.status = {
+            'printer': 'Offline',
+            'microcontroller': 'Offline',
+        }
+        #################
 
         self.init_ui()
 
@@ -728,14 +734,14 @@ class AreaModeWindow(QWidget):
 
         # Add printer gif
         self.printer_status_gif_label = QLabel()
-        printer_gif_movie = QMovie('test1.gif')
+        printer_gif_movie = QMovie('3doff1.png')
         self.printer_status_gif_label.setMovie(printer_gif_movie)
         printer_gif_movie.start()
         gif_layout.addWidget(self.printer_status_gif_label)
 
         # Add microcontroller gif
         self.microcontroller_status_gif_label = QLabel()
-        microcontroller_gif_movie = QMovie('t2.gif')
+        microcontroller_gif_movie = QMovie('mcu_off.gif')
         self.microcontroller_status_gif_label.setMovie(microcontroller_gif_movie)
         microcontroller_gif_movie.start()
         gif_layout.addWidget(self.microcontroller_status_gif_label)
@@ -744,6 +750,43 @@ class AreaModeWindow(QWidget):
         status_layout.addLayout(gif_layout)
 
         return status_layout
+
+
+    ###################
+    def update_status(self, printer_status=None, microcontroller_status=None):
+        if printer_status:
+            self.status['printer'] = printer_status
+            self.printer_status_value.setText(printer_status)
+
+            printer_gif_path = {
+                'Offline': '3doff1.png',
+                'Online': 'printer_on.png',
+                'Testing': 'printing.gif',
+            }[printer_status]
+
+            printer_gif_movie = QMovie(printer_gif_path)
+            self.printer_status_gif_label.setMovie(printer_gif_movie)
+            printer_gif_movie.start()
+
+        if microcontroller_status:
+            self.status['microcontroller'] = microcontroller_status
+            self.microcontroller_status_value.setText(microcontroller_status)
+
+            microcontroller_gif_path = {
+                'Offline': 'mcu_off.gif',
+                'Online': 'mcu_on.gif',
+                'Testing': 'activated.png',
+            }[microcontroller_status]
+
+            microcontroller_gif_movie = QMovie(microcontroller_gif_path)
+            self.microcontroller_status_gif_label.setMovie(microcontroller_gif_movie)
+            microcontroller_gif_movie.start()
+    ################
+
+
+
+
+
 
 
 
