@@ -27,7 +27,9 @@ The single-point test window allows users to perform a single-point test on the 
 
 ### Multi-Point Test
 
-The multi-point test window allows users to perform a multi-point test on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display the activation distance and force required to activate the switch.
+The multi-point test window allows users to perform a multi-point test on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display 2 heatmaps, showing 
+  * 1) the actuation distance at each point 
+  * 2) the actuation force at each point
 
 ### Location Data
 
