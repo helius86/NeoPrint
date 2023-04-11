@@ -4,7 +4,7 @@
 
 ## Introduction
 
-NeoPrint is an application developed to test an assistive switch based on a modified 3D printer. It includes two Python files, `main.py` and `single_mode_window.py`, that work together to allow users to perform single-point and multi-point tests on the switch.
+NeoPrint is an application developed to test a cylindrical assistive switch based on a modified 3D printer. It includes two Python files, `main.py` and `single_mode_window.py`, that work together to allow users to perform single-point and multi-point tests on the switch.
 
 ## Dependencies
 
@@ -29,13 +29,21 @@ The mode selection dialog allows users to choose between single-point and multi-
 
 ### Single-Point Test
 
-The single-point test window allows users to perform a single-point test on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display the activation distance and force required to activate the switch.
+The single-point test window allows users to test an arbitrary point on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display the activation distance and force required to activate the switch.
 
 ### Multi-Point Test
 
-The multi-point test window allows users to perform a multi-point test on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display 2 heatmaps, showing 
-   1) the actuation distance at each point 
-   2) the actuation force at each point
+The multi-point test window allows users to autogenerate and test multiple points on the switch. 
+
+The user has the option to generate points that form equidistant rings around the switch by specifying the number of rings (up to 7), or generate points that are equidistant from each other by specifying the number of points (up to 99).  
+
+The user can see the generated test points by clicking the "Generate" button. 
+
+The user can initiate the test by pressing the "Test" button. After the test is complete, the application will display 2 heatmaps, showing: 
+   - the actuation distance at each point 
+   - the actuation force at each point
+  
+See examples of the generated test points and heatmap in the `Examples` directory. 
 
 ## Known Issues
 
