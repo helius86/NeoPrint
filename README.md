@@ -45,7 +45,7 @@ The location data window displays the current location data of the switch.
 ## Credits
 
 - Developed by UBC 2023 Capstone team CG-65
-- Coorporate client: Neil Sqaure
+- Coorporate client: Neil Squire
 
 ## License
 
