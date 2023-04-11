@@ -14,7 +14,7 @@ NeoPrint is an application developed to test a cylindrical assistive switch base
 
 ## Getting Started
 
- 1) Navigate to the `NeoPrint` directory and download the files inside.
+ 1) Download the files inside `NeoPrint` directory.
  2) Install a Python IDE   eg. [Pycharm](https://www.jetbrains.com/pycharm/download/#section=windows)
  3) Run `main.py`
  4) Install libraries and dependencies as prompted in the console
