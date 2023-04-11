@@ -13,10 +13,10 @@ NeoPrint is an application developed to test an assistive switch based on a modi
 
 ## Getting Started
 
-1) Navigate to the `NeoPrint` directory and download the files.
-2) Install a Python IDE eg. Pycharm
-3) Run `main.py`
-4) Install libraries as prompted in the console
+ 1) Navigate to the `NeoPrint` directory and download the files.
+ 2) Install a Python IDE eg. Pycharm
+ 3) Run `main.py`
+ 4) Install libraries as prompted in the console
 
 This will launch the main window of the application, which includes a mode selection dialog. Users can choose between single-point and multi-point tests by selecting the appropriate radio button and clicking the "OK" button.
 
@@ -33,8 +33,8 @@ The single-point test window allows users to perform a single-point test on the 
 ### Multi-Point Test
 
 The multi-point test window allows users to perform a multi-point test on the switch. The user can initiate the test by pressing the "Activate" button. After the test is complete, the application will display 2 heatmaps, showing 
-  * 1) the actuation distance at each point 
-  * 2) the actuation force at each point
+   1) the actuation distance at each point 
+   2) the actuation force at each point
 
 ## Known Issues
 
