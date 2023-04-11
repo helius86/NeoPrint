@@ -14,7 +14,7 @@ NeoPrint is an application developed to test an assistive switch based on a modi
 ## Getting Started
 
  1) Navigate to the `NeoPrint` directory and download the files.
- 2) Install a Python IDE eg. Pycharm
+ 2) Install a Python IDE   eg. [Pycharm](https://www.jetbrains.com/pycharm/download/#section=windows)
  3) Run `main.py`
  4) Install libraries as prompted in the console
 
