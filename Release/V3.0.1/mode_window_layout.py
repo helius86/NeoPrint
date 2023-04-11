@@ -741,7 +741,7 @@ class AreaModeWindow(QWidget):
 
         # Add microcontroller gif
         self.microcontroller_status_gif_label = QLabel()
-        microcontroller_gif_movie = QMovie('mcu_off.gif')
+        microcontroller_gif_movie = QMovie('resized_MCU_OFF.gif')
         self.microcontroller_status_gif_label.setMovie(microcontroller_gif_movie)
         microcontroller_gif_movie.start()
         gif_layout.addWidget(self.microcontroller_status_gif_label)
@@ -773,8 +773,8 @@ class AreaModeWindow(QWidget):
             self.microcontroller_status_value.setText(microcontroller_status)
 
             microcontroller_gif_path = {
-                'Offline': 'mcu_off.gif',
-                'Online': 'mcu_on.gif',
+                'Offline': 'resized_MCU_OFF.gif',
+                'Online': 'resized_MCU_ON.gif',
                 'Testing': 'activated.png',
             }[microcontroller_status]
 
@@ -782,12 +782,6 @@ class AreaModeWindow(QWidget):
             self.microcontroller_status_gif_label.setMovie(microcontroller_gif_movie)
             microcontroller_gif_movie.start()
     ################
-
-
-
-
-
-
 
 
 
@@ -1222,24 +1216,6 @@ class AreaModeWindow(QWidget):
     #     each_time_command.append(f"G1 X{x} Y{y}")
 
 
-# 最重要的method
-#     def area_test_logic(self):
-#         # 1. Single point test at the centre
-#         # 其实就是下面几个method的一个combination，不用单独为了centre做一个method
-#         centre_x_coord = "50"
-#         centre_y_coord = "50"
-#         point2x = "40"
-#         point2y = "40"
-#         self.move_to_xy(centre_x_coord, centre_y_coord)
-#         # 2. When test is done Lift to a safe z - position
-#         self.move_to_safe_z()
-#         # 3. Move to the next point (x&y) 这里有个绝对还是相对坐标的问题，是否需要归零？
-#         # 这里的point2x和point2y后面需要从list里面导出来
-#         self.move_to_xy(point2x,point2y)
-#         # 4. Move to the surface again
-#         self.move_to_surface()
-#         # 5. Begin new test
-#             # 往下increment，触发之后停止步进
 
 
 
