@@ -4,7 +4,7 @@
 
 ## Introduction
 
-NeoPrint is an application developed to test a cylindrical assistive switch based on a modified 3D printer. It includes two Python files, `main.py` and `single_mode_window.py`, that work together to allow users to perform single-point and multi-point tests on the switch.
+NeoPrint is an application developed to test a cylindrical assistive switch based on a modified 3D printer. It includes two Python files, `main_window.py` and `mode_window_layout.py`, that work together to allow users to perform single-point and multi-point tests on the switch.
 
 ## Dependencies
 
@@ -16,7 +16,7 @@ NeoPrint is an application developed to test a cylindrical assistive switch base
 
  1) Download the files inside `NeoPrint` directory.
  2) Install a Python IDE   eg. [Pycharm](https://www.jetbrains.com/pycharm/download/#section=windows)
- 3) Run `main.py`
+ 3) Run `main_window.py`
  4) Install libraries and dependencies as prompted in the console
 
 This will launch the main window of the application, which includes a mode selection dialog. Users can choose between single-point and multi-point tests by selecting the appropriate radio button and clicking the "OK" button.
